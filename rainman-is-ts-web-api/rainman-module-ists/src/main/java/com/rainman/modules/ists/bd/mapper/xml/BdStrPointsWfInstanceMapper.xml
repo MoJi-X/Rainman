@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rainman.modules.ists.bd.mapper.BdStrPointsWfInstanceMapper">
+    <select id="pageByDto" resultType="com.rainman.modules.ists.bd.dto.BdStrPointsWfInstanceDto">
+        select
+        *
+        from bd_str_points bstp
+        join bd_str_points_wf_instance wfi on (bstp.bd_str_points_id = wfi.bd_str_points_id)
+        <where>
+            <if test="param.wfInstanceId != null">
+                and wfi.wf_instance_id = #{param.wfInstanceId}
+            </if>
+            <if test="param.bdProjectId != null">
+                and wfi.bd_project_id = #{param.bdProjectId}
+            </if>
+        </where>
+        order by bstp.last_modified_date
+    </select>
+
+    <select id="listByDto" resultType="com.rainman.modules.ists.bd.dto.BdStrPointsWfInstanceDto"
+            parameterType="com.rainman.modules.ists.bd.dto.BdStrPointsWfInstanceDto">
+        select
+        *
+        from bd_str_points bstp
+        join bd_str_points_wf_instance wfi on (bstp.bd_str_points_id = wfi.bd_str_points_id)
+        <where>
+            <if test="param.wfInstanceId != null">
+                and wfi.wf_instance_id = #{param.wfInstanceId}
+            </if>
+            <if test="param.bdProjectId != null">
+                and wfi.bd_project_id = #{param.bdProjectId}
+            </if>
+        </where>
+        order by bstp.last_modified_date
+    </select>
+
+    <select id="pageByDtoToMap" resultType="java.util.Map">
+        select
+        *
+        from bd_str_points bstp
+        join bd_str_points_wf_instance wfi on (bstp.bd_str_points_id = wfi.bd_str_points_id)
+        <where>
+            <if test="param.wfInstanceId != null">
+                and wfi.wf_instance_id = #{param.wfInstanceId}
+            </if>
+            <if test="param.bdProjectId != null">
+                and wfi.bd_project_id = #{param.bdProjectId}
+            </if>
+        </where>
+        order by bstp.last_modified_date
+    </select>
+</mapper>

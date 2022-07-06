@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rainman.modules.ists.bd.mapper.BdStrPointsMapper">
+    <delete id="removeByWfInstanceId" parameterType="java.lang.String">
+		DELETE
+		bda
+        FROM
+	        bd_str_points bda
+        WHERE EXISTS (
+	    SELECT
+		    1
+	    FROM
+		    bd_str_points_wf_instance bda_wfi
+	    WHERE
+		    bda_wfi.bd_str_points_id = bda_wfi.bd_str_points_id
+	    AND bda_wfi.wf_instance_id = #{id}
+        )
+    </delete>
+</mapper>

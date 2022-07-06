@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rainman.modules.ists.bd.mapper.BdProjectMapper">
+    <select id="pageByWfCode" resultType="com.rainman.modules.ists.bd.dto.BdProjectDto">
+        SELECT bdp.*
+        FROM bd_project bdp
+        where bdp.data_state_code = 'finished'
+        <choose>
+            <when test="param.wfCode == 'project_check'">
+                <![CDATA[
+                and (not exists(select 1 from wf_instance wfi
+                join bd_project_wf_instance bdp_wfi on(bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                where bdp_wfi.bd_project_id = bdp.bd_project_id
+                and wfi.wf_code = 'project_check'
+                and wfi.state_code in ('in_progress', 'returned', 'finished'))
+                or ((select max(wfi.last_modified_date) from wf_instance wfi
+                join bd_project_wf_instance bdp_wfi on(bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                where bdp_wfi.bd_project_id = bdp.bd_project_id
+                and wfi.wf_code = 'project_check'
+                and wfi.state_code in ('finished')) < (select max(wfi.last_modified_date) from wf_instance wfi
+                join bd_project_wf_instance bdp_wfi on(bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                where bdp_wfi.bd_project_id = bdp.bd_project_id
+                and wfi.wf_code = 'alter_report'
+                and wfi.state_code in ('finished'))))
+               ]]>
+            </when>
+            <when test="param.wfCode == 'network_access' || param.wfCode == 'accept' || param.wfCode == 'ineed_check'">
+                and not exists(select 1 from wf_instance wfi
+                join bd_project_wf_instance bdp_wfi on(bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                where bdp_wfi.bd_project_id = bdp.bd_project_id
+                and wfi.wf_code = #{param.wfCode}
+                and wfi.state_code in ('in_progress', 'returned', 'finished'))
+            </when>
+            <otherwise>
+                and not exists(select 1 from wf_instance wfi
+                join bd_project_wf_instance bdp_wfi on(bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                where bdp_wfi.bd_project_id = bdp.bd_project_id
+                and wfi.wf_code = #{param.wfCode}
+                and wfi.state_code in ('in_progress', 'returned'))
+            </otherwise>
+        </choose>
+        <if test="param.inWfCodes != null and param.inWfCodes.size() > 0">
+            and exists(select 1 from wf_instance wfi
+            join bd_project_wf_instance bdp_wfi on(bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+            where bdp_wfi.bd_project_id = bdp.bd_project_id
+            and wfi.state_code = 'finished'
+            and wfi.wf_code in
+            <foreach collection="param.inWfCodes" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>)
+        </if>
+        <if test="param.systemGradingCode != null and param.systemGradingCode != ''">
+            and bdp.system_grading_code = #{param.systemGradingCode}
+        </if>
+        <if test="param.year != null">
+            and bdp.`year` = #{param.year}
+        </if>
+        <if test="param.name != null and param.name != ''">
+            and bdp.`name` like CONCAT('%', #{param.name}, '%')
+        </if>
+    </select>
+
+    <select id="pageByWfCodeAndWfNodeCode" resultType="com.rainman.modules.ists.bd.dto.BdProjectDto">
+        select bdp.*
+        , wfi.wf_node_code
+        , wfi.wf_instance_id
+        from bd_project bdp
+        join bd_project_wf_instance bdp_wfi on(bdp_wfi.bd_project_id = bdp.bd_project_id)
+        join wf_instance wfi on(wfi.wf_instance_id = bdp_wfi.wf_instance_id)
+        where wfi.data_state_code = 'use'
+        and wfi.wf_code = #{param.wfCode}
+        <if test="param.systemGradingCode != null and param.systemGradingCode != ''">
+            and bdp.system_grading_code = #{param.systemGradingCode}
+        </if>
+        <if test="param.year != null">
+            and bdp.`year` = #{param.year}
+        </if>
+        <if test="param.name != null and param.name != ''">
+            and bdp.`name` like CONCAT('%', #{param.name}, '%')
+        </if>
+        <if test="param.wfNodeCode != null and param.wfNodeCode != ''">
+            and wfi.wf_node_code = #{param.wfNodeCode}
+        </if>
+        order by bdp.`year` desc, wfi.apply_time desc
+    </select>
+
+    <select id="pageByWfCodeAndWfInstanceStateCode" resultType="com.rainman.modules.ists.bd.dto.BdProjectDto">
+        select
+        (select wfi.wf_instance_id from wf_instance wfi join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id =
+        wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.data_state_code = 'use' and wfi.wf_code = 'project_rank'
+        order by wfi.created_date desc limit 1) as project_rank_wf_instance_id,
+        (select wfi.wf_instance_id from wf_instance wfi join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id =
+        wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.data_state_code = 'use' and wfi.wf_code =
+        'project_check'
+        order by wfi.created_date desc limit 1) as project_check_wf_instance_id,
+        (select wfi.wf_instance_id from wf_instance wfi join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id =
+        wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.data_state_code = 'use' and wfi.wf_code =
+        'network_access'
+        order by wfi.created_date desc limit 1) as network_access_wf_instance_id,
+        (select wfi.wf_instance_id from wf_instance wfi join bd_project_wf_instance bdp_wfi on(bdp_wfi.wf_instance_id =
+        wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.data_state_code = 'use' and wfi.wf_code = 'accept'
+        order by wfi.created_date desc limit 1) as accept_wf_instance_id,
+        (select wfi.wf_instance_id from wf_instance wfi join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id =
+        wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.data_state_code = 'use' and wfi.wf_code =
+        'alter_report'
+        order by wfi.created_date desc limit 1) as alter_report_wf_instance_id,
+        (select wfi.wf_instance_id from wf_instance wfi join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id =
+        wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.data_state_code = 'use' and wfi.wf_code =
+        'operation'
+        order by wfi.created_date desc limit 1) as operation_wf_instance_id,
+        (select wfi.wf_instance_id from wf_instance wfi join bd_project_wf_instance bdp_wfi on ( bdp_wfi.wf_instance_id
+        = wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.data_state_code = 'use' and wfi.wf_code =
+        'operation'
+        order by wfi.created_date desc limit 1) as operation_wf_instance_id,
+        (select wfi.wf_instance_id from wf_instance wfi join bd_project_wf_instance bdp_wfi on ( bdp_wfi.wf_instance_id
+        = wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.data_state_code = 'use' and wfi.wf_code =
+        'risk_assessment'
+        order by wfi.created_date desc limit 1) as risk_assessment_wf_instance_id,
+        (select wfi.wf_instance_id from wf_instance wfi join bd_project_wf_instance bdp_wfi on ( bdp_wfi.wf_instance_id
+        = wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.data_state_code = 'use' and wfi.wf_code =
+        'disposal'
+        order by wfi.created_date desc limit 1) as disposal_wf_instance_id,
+        (select wfi.wf_instance_id from wf_instance wfi join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id =
+        wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.data_state_code = 'use' and wfi.wf_code = 'network_exit'
+        order by wfi.created_date desc limit 1) as network_exit_wf_instance_id,
+        bdp.*
+        from bd_project bdp
+        <where>
+            <if test="param.wfInstanceStateCode != null and param.wfInstanceStateCode != ''">
+                and exists(select 1 from wf_instance wfi join bd_project_wf_instance bdp_wfi on(bdp_wfi.wf_instance_id =
+                wfi.wf_instance_id)
+                where bdp_wfi.bd_project_id = bdp.bd_project_id and wfi.state_code = #{param.wfInstanceStateCode} and
+                wfi.data_state_code = 'use')
+            </if>
+            <if test="param.systemGradingCode != null and param.systemGradingCode != ''">
+                and bdp.system_grading_code = #{param.systemGradingCode}
+            </if>
+            <if test="param.year != null">
+                and bdp.`year` = #{param.year}
+            </if>
+            <if test="param.name != null and param.name != ''">
+                and bdp.`name` like CONCAT('%', #{param.name}, '%')
+            </if>
+        </where>
+        order by bdp.`year` desc, bdp.last_modified_date desc
+    </select>
+
+    <select id="listBySystemGradingCode" resultType="java.util.Map">
+        select sdi.item_value as code
+             , sdi.item_text  as text
+             , count(*)       as bd_project_count
+        from sys_dict_item sdi
+                 join sys_dict sd on (sd.id = sdi.dict_id)
+                 left join bd_project bdp
+                           on (bdp.data_state_code = 'finished' and bdp.system_grading_code = sdi.item_value)
+        where sd.dict_code = 'project_rank'
+        group by sdi.item_value, sdi.item_text, sdi.sort_order
+        order by sdi.sort_order asc
+    </select>
+
+    <delete id="removeByWfInstanceId" parameterType="java.lang.String">
+        DELETE
+        bdp
+        FROM
+	        bd_project bdp
+        WHERE
+	        bdp.data_state_code = 'temp'
+        AND EXISTS (
+	    SELECT
+		    1
+	    FROM
+		    bd_project_wf_instance bdp_wfi
+	    WHERE
+		    bdp_wfi.bd_project_id = bdp_wfi.bd_project_id
+	    AND bdp_wfi.wf_instance_id =
+        #{id}
+        )
+    </delete>
+</mapper>

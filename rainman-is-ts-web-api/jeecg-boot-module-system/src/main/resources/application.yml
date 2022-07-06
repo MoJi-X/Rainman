@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: jeecg-system
+  profiles:
+    include:
+      - prod
+      - prod-activiti
+      - prod-rainman
+    active: dev

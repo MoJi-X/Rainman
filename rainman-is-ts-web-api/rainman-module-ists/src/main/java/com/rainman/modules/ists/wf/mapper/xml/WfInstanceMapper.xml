@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rainman.modules.ists.wf.mapper.WfInstanceMapper">
+    <select id="pageByUsername" resultType="com.rainman.modules.ists.wf.dto.WfInstanceDto">
+        select wfi.*
+        from wf_instance wfi
+        where wfi.data_state_code = 'use'
+        <choose>
+            <when test="isHistory == 'true'">
+                and exists(select 1 from act_hi_taskinst acthit
+                where acthit.PROC_INST_ID_ = wfi.process_id
+                and acthit.ASSIGNEE_ = #{username})
+            </when>
+            <otherwise>
+                and exists(select 1
+                from act_ru_task actrut
+                join act_ru_identitylink actrui on (actrui.TASK_ID_ = actrut.ID_)
+                where actrut.PROC_INST_ID_ = wfi.process_id
+                and actrui.USER_ID_ = #{username}
+                )
+            </otherwise>
+        </choose>
+        order by wfi.last_modified_date desc
+    </select>
+
+    <select id="countByWfCodeAndBdFileFlagCode" resultType="java.lang.Integer">
+        select count(*) from wf_instance wfi
+        where wfi.data_state_code = 'use'
+        and wfi.wf_code = #{wfCode}
+        <choose>
+            <when test="bdFileFlagCode != null and bdFileFlagCode != ''">
+                and wfi.state_code in ('in_progress', 'returned', 'finished')
+                and exists(select 1 from bd_file bdf
+                join bd_project bdp on(bdp.bd_project_id = bdf.table_id)
+                where bdf.table_name = 'bd_project'
+                and bdf.wf_instance_id = wfi.wf_instance_id
+                and bdf.flag_code = #{bdFileFlagCode})
+            </when>
+            <otherwise>
+                and wfi.state_code = 'finished'
+            </otherwise>
+        </choose>
+    </select>
+
+    <select id="countByInitiationDate" resultType="java.lang.Integer">
+        select count(*) from bd_project bdp
+        where bdp.data_state_code not in ('temp')
+        and exists(select 1 from wf_instance wfi
+        join bd_project_wf_instance bdp_wfi on(bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+        where bdp_wfi.bd_project_id = bdp.bd_project_id
+        and wfi.state_code in ('in_progress', 'returned', 'finished')
+        and wfi.wf_code not in ('ineed_check')
+        <if test="beginInitiationDate != null and endInitiationDate != null">
+            and wfi.initiation_date BETWEEN #{beginInitiationDate} and #{endInitiationDate}
+        </if>
+        )
+    </select>
+
+    <select id="countForBdProject" resultType="java.util.Map">
+        select (select count(*) from bd_project bdp where bdp.data_state_code not in ('temp')) as all_count
+             , (select count(*)
+                from bd_project bdp
+                where bdp.data_state_code not in ('temp')
+                  and exists(select 1
+                             from wf_instance wfi
+                                      join bd_project_wf_instance bdp_wfi
+                                           on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                             where bdp_wfi.bd_project_id = bdp.bd_project_id
+                               and wfi.state_code in ('in_progress', 'returned', 'finished')
+                               and wfi.wf_code in ('project_rank', 'project_check')))          as plan_count
+             , (select count(*)
+                from bd_project bdp
+                where bdp.data_state_code not in ('temp')
+                  and exists(select 1
+                             from wf_instance wfi
+                                      join bd_project_wf_instance bdp_wfi
+                                           on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                             where bdp_wfi.bd_project_id = bdp.bd_project_id
+                               and wfi.state_code in ('in_progress', 'returned', 'finished')
+                               and wfi.wf_code in ('network_access', 'accept')))               as build_count
+             , (select count(*)
+                from bd_project bdp
+                where bdp.data_state_code not in ('temp')
+                  and exists(select 1
+                             from wf_instance wfi
+                                      join bd_project_wf_instance bdp_wfi
+                                           on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                             where bdp_wfi.bd_project_id = bdp.bd_project_id
+                               and wfi.state_code in ('in_progress', 'returned', 'finished')
+                               and wfi.wf_code in ('alter_report', 'operation', 'risk_assessment', 'disposal',
+                                                   'network_exit')))                           as runtime_count
+    </select>
+
+    <select id="countByWfCodeNqIneedCheckForBdProject" resultType="java.lang.Integer">
+        select ((select count(*) from bd_project bdp where bdp.data_state_code not in ('temp')) - (select count(*)
+                                                                                                   from bd_project bdp
+                                                                                                   where bdp.data_state_code not in ('temp')
+                                                                                                     and exists(select 1
+                                                                                                                from wf_instance wfi
+                                                                                                                         join bd_project_wf_instance bdp_wfi
+                                                                                                                              on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                                                                                                                where bdp_wfi.bd_project_id = bdp.bd_project_id
+                                                                                                                  and wfi.state_code in ('in_progress', 'returned', 'finished')
+                                                                                                                  and wfi.wf_code not in ('ineed_check')))) as wf_count
+    </select>
+
+    <select id="countByWfCodeNqAcceptForBdProject" resultType="java.lang.Integer">
+        select count(*) as wf_count
+        from bd_project bdp
+        where bdp.data_state_code not in ('temp')
+          and (exists(select 1
+                      from wf_instance wfi
+                               join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                      where bdp_wfi.bd_project_id = bdp.bd_project_id
+                        and wfi.state_code in ('in_progress', 'returned', 'finished')
+                        and wfi.wf_code in ('project_rank'))
+            and exists(select 1
+                       from wf_instance wfi
+                                join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                       where bdp_wfi.bd_project_id = bdp.bd_project_id
+                         and wfi.state_code in ('in_progress', 'returned', 'finished')
+                         and wfi.wf_code in ('project_check'))
+            and exists(select 1
+                       from wf_instance wfi
+                                join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                       where bdp_wfi.bd_project_id = bdp.bd_project_id
+                         and wfi.state_code in ('in_progress', 'returned', 'finished')
+                         and wfi.wf_code in ('network_access')))
+          and not exists(select 1
+                         from wf_instance wfi
+                                  join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                         where bdp_wfi.bd_project_id = bdp.bd_project_id
+                           and wfi.state_code in ('in_progress', 'returned', 'finished')
+                           and wfi.wf_code in ('accept'))
+    </select>
+
+    <select id="countByWfCodeEqIneedCheckForBdProject" resultType="java.lang.Integer">
+        select count(*) as wf_count
+        from bd_project bdp
+        where bdp.data_state_code not in ('temp')
+          and exists(select 1
+                     from wf_instance wfi
+                              join bd_project_wf_instance bdp_wfi
+                                   on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                     where bdp_wfi.bd_project_id = bdp.bd_project_id
+                       and wfi.state_code in ('in_progress', 'returned', 'finished')
+                       and wfi.wf_code not in ('ineed_check'))
+    </select>
+
+    <select id="countByWfCodeInAllForBdProject" resultType="java.lang.Integer">
+        select count(*) as wf_count
+        from bd_project bdp
+        where bdp.data_state_code not in ('temp')
+          and (exists(select 1
+                      from wf_instance wfi
+                               join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                      where bdp_wfi.bd_project_id = bdp.bd_project_id
+                        and wfi.state_code in ('in_progress', 'returned', 'finished')
+                        and wfi.wf_code in ('project_rank'))
+            and exists(select 1
+                       from wf_instance wfi
+                                join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                       where bdp_wfi.bd_project_id = bdp.bd_project_id
+                         and wfi.state_code in ('in_progress', 'returned', 'finished')
+                         and wfi.wf_code in ('project_check'))
+            and exists(select 1
+                       from wf_instance wfi
+                                join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                       where bdp_wfi.bd_project_id = bdp.bd_project_id
+                         and wfi.state_code in ('in_progress', 'returned', 'finished')
+                         and wfi.wf_code in ('network_access'))
+            and exists(select 1
+                       from wf_instance wfi
+                                join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                       where bdp_wfi.bd_project_id = bdp.bd_project_id
+                         and wfi.state_code in ('in_progress', 'returned', 'finished')
+                         and wfi.wf_code in ('accept')))
+          and exists(select 1
+                     from wf_instance wfi
+                              join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+                     where bdp_wfi.bd_project_id = bdp.bd_project_id
+                       and wfi.state_code in ('in_progress', 'returned', 'finished')
+                       and wfi.wf_code in ('alter_report', 'operation', 'risk_assessment', 'disposal', 'network_exit'))
+    </select>
+
+    <select id="listCountByOrgForWf" resultType="java.util.Map">
+        select sd.org_code
+             , sd.depart_name                                  as org_name
+             , (select count(*)
+                from wf_instance wfi
+                where wfi.wf_code in ('project_rank', 'project_check')
+                  and wfi.state_code in ('in_progress', 'returned', 'finished')
+                  and exists(select 1
+                             from act_hi_taskinst acthit
+                                      join sys_user su on (su.username = acthit.ASSIGNEE_)
+                             where acthit.PROC_INST_ID_ = wfi.process_id
+                               and su.org_code = sd.org_code)) as plan_count
+             , (select count(*)
+                from wf_instance wfi
+                where wfi.wf_code in ('network_access', 'accept')
+                  and wfi.state_code in ('in_progress', 'returned', 'finished')
+                  and exists(select 1
+                             from act_hi_taskinst acthit
+                                      join sys_user su on (su.username = acthit.ASSIGNEE_)
+                             where acthit.PROC_INST_ID_ = wfi.process_id
+                               and su.org_code = sd.org_code)) as build_count
+             , (select count(*)
+                from wf_instance wfi
+                where wfi.wf_code in ('alter_report', 'operation', 'risk_assessment', 'disposal', 'network_exit')
+                  and wfi.state_code in ('in_progress', 'returned', 'finished')
+                  and exists(select 1
+                             from act_hi_taskinst acthit
+                                      join sys_user su on (su.username = acthit.ASSIGNEE_)
+                             where acthit.PROC_INST_ID_ = wfi.process_id
+                               and su.org_code = sd.org_code)) as runtime_count
+        from sys_depart sd
+        where exists(select 1
+                     from sys_user su
+                              join act_hi_taskinst acthit on (acthit.ASSIGNEE_ = su.username)
+                              join wf_instance wfi on (wfi.process_id = acthit.PROC_INST_ID_)
+                     where su.org_code = sd.org_code)
+        order by sd.org_code asc
+    </select>
+</mapper>

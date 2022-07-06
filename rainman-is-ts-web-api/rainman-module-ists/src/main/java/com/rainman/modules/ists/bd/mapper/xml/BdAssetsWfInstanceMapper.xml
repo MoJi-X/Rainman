@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rainman.modules.ists.bd.mapper.BdAssetsWfInstanceMapper">
+    <select id="pageByDto" resultType="com.rainman.modules.ists.bd.dto.BdAssetsWfInstanceDto">
+        select
+        aset.equipment_type_name,
+        aset.equipment_ip,
+        aset.equipment_port,
+        aset.deploy_computer_room,
+        aset.om_principal_name,
+        awf.bd_assets_id,
+        awf.bd_project_id,
+        awf.wf_instance_id
+        from bd_assets aset
+        join bd_assets_wf_instance awf on(aset.bd_assets_id = awf.bd_assets_id)
+        <where>
+            <if test="param.bdProjectId != null">
+                and awf.bd_project_id = #{param.bdProjectId}
+            </if>
+
+            <if test="param.wfInstanceId != null">
+                and awf.wf_instance_id = #{param.wfInstanceId}
+            </if>
+        </where>
+        order by aset.last_modified_date asc
+    </select>
+</mapper>

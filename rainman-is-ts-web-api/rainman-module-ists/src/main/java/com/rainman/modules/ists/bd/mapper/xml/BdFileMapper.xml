@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rainman.modules.ists.bd.mapper.BdFileMapper">
+    <select id="listByWfCode" resultType="com.rainman.modules.ists.bd.dto.BdFileDto">
+        select sdi.item_text as flag_name
+        , sdi.item_value as flag_code
+        , sdi.description as wf_node_code
+        , bdf.bd_file_id
+        , bdf.filename
+        from sys_dict sd
+        join sys_dict_item sdi on (sdi.dict_id = sd.id)
+        left join bd_file bdf on (bdf.flag_code = sdi.item_value and
+        bdf.table_name = #{tableName} and
+        bdf.table_id = #{tableId} and
+        (bdf.wf_instance_id = #{wfInstanceId}
+        <if test="inWfCode != null and inWfCode != ''">
+            or exists(select 1
+            from wf_instance wfi
+            join bd_project_wf_instance bdp_wfi on (bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+            where bdp_wfi.bd_project_id = bdf.table_id
+            and wfi.wf_code = #{inWfCode}
+            and wfi.state_code = 'finished')
+        </if>
+        ))
+        where sd.dict_code = CONCAT(#{wfCode}, '_files')
+        <if test="wfNodeCode != null and wfNodeCode != ''">
+            and sdi.description = #{wfNodeCode}
+        </if>
+        order by sdi.sort_order asc
+    </select>
+</mapper>

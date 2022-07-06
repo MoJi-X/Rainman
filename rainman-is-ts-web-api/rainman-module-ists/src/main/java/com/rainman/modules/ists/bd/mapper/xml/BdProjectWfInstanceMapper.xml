@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rainman.modules.ists.bd.mapper.BdProjectWfInstanceMapper">
+    <select id="listByWfInstanceId" resultType="java.util.Map" parameterType="java.lang.String">
+        select bdp_wfi.bd_project_wf_instance_id
+             , bdp_wfi.wf_instance_id
+             , bdp_wfi.bd_project_id
+             , bdp.`name`
+             , bdp.`year`
+             , bdp.project_leader_code
+             , bdp.system_grading_code
+        from bd_project_wf_instance bdp_wfi
+                 join wf_instance wfi on (wfi.wf_instance_id = bdp_wfi.wf_instance_id)
+                 join bd_project bdp on (bdp.bd_project_id = bdp_wfi.bd_project_id)
+        where bdp_wfi.wf_instance_id = #{wfInstanceId}
+        order by bdp.last_modified_date desc
+    </select>
+
+    <select id="pageByWfCode" resultType="java.util.Map">
+        SELECT wfi.wf_instance_id
+        , wfi.wf_code
+        , wfi.wf_node_code
+        , wfi.state_code
+        , bdp.name
+        , bdp.`year`
+        , bdp.system_type_code
+        , bdp.system_grading_code
+        FROM wf_instance wfi
+        left join bd_project_wf_instance bdp_wfi on(bdp_wfi.wf_instance_id = wfi.wf_instance_id)
+        left join bd_project bdp on(bdp.bd_project_id = bdp_wfi.bd_project_id)
+        where wfi.data_state_code = 'use'
+        and wfi.wf_code = #{param.wfInstance.wfCode}
+        <if test="param.loginUsername != null and param.loginUsername != ''">
+            and exists(select 1 from act_ru_task actrut
+            join act_ru_identitylink actrui on (actrui.TASK_ID_ = actrut.ID_) where actrut.PROC_INST_ID_ =
+            wfi.process_id and actrui.USER_ID_ = #{param.loginUsername})
+        </if>
+        <if test="param.wfInstance.wfNodeCode != null and param.wfInstance.wfNodeCode != ''">
+            and wfi.wf_node_code = #{param.wfInstance.wfNodeCode}
+        </if>
+        <if test="param.wfInstance.stateCode != null and param.wfInstance.stateCode != ''">
+            and wfi.state_code = #{param.wfInstance.stateCode}
+        </if>
+        <if test="param.bdProject.systemGradingCode != null and param.bdProject.systemGradingCode != ''">
+            and bdp.system_grading_code = #{param.bdProject.systemGradingCode}
+        </if>
+        <if test="param.bdProject.year != null">
+            and bdp.`year` = #{param.bdProject.year}
+        </if>
+        <if test="param.bdProject.name != null and param.bdProject.name != ''">
+            and bdp.`name` like CONCAT('%', #{param.bdProject.name}, '%')
+        </if>
+        order by wfi.last_modified_date desc
+    </select>
+
+    <select id="pageForProjectRank" resultType="java.util.Map">
+        SELECT wfi.wf_instance_id
+        , wfi.name
+        , wfi.wf_code
+        , wfi.wf_node_code
+        , wfi.state_code
+        FROM wf_instance wfi
+        where wfi.data_state_code = 'use'
+        and wfi.wf_code = 'project_rank'
+        <if test="param.loginUsername != null and param.loginUsername != ''">
+            and exists(select 1 from act_ru_task actrut
+            join act_ru_identitylink actrui on (actrui.TASK_ID_ = actrut.ID_) where actrut.PROC_INST_ID_ =
+            wfi.process_id and actrui.USER_ID_ = #{param.loginUsername})
+        </if>
+        <if test="param.wfInstance.wfNodeCode != null and param.wfInstance.wfNodeCode != ''">
+            and wfi.wf_node_code = #{param.wfInstance.wfNodeCode}
+        </if>
+        <if test="param.wfInstance.stateCode != null and param.wfInstance.stateCode != ''">
+            and wfi.state_code = #{param.wfInstance.stateCode}
+        </if>
+        <if test="(param.bdProject.systemGradingCode != null and param.bdProject.systemGradingCode != '') || (param.bdProject.year != null) || (param.bdProject.name != null and param.bdProject.name != '')">
+            and exists(select 1 from bd_project w_bdp
+            join bd_project_wf_instance w_bdp_wfi on(w_bdp_wfi.bd_project_id = w_bdp.bd_project_id)
+            where w_bdp_wfi.wf_instance_id = wfi.wf_instance_id
+            <if test="param.bdProject.systemGradingCode != null and param.bdProject.systemGradingCode != ''">
+                and w_bdp.system_grading_code = #{param.bdProject.systemGradingCode}
+            </if>
+            <if test="param.bdProject.year != null">
+                and w_bdp.`year` = #{param.bdProject.year}
+            </if>
+            <if test="param.bdProject.name != null and param.bdProject.name != ''">
+                and w_bdp.`name` like CONCAT('%', #{param.bdProject.name}, '%')
+            </if>
+            )
+        </if>
+        order by wfi.last_modified_date desc
+    </select>
+    <select id="listByWfCodeAndBdProjectId"
+            resultType="com.rainman.modules.ists.wf.entity.WfInstance">
+        SELECT
+            wfi.*
+        FROM
+            wf_instance wfi
+                JOIN bd_project_wf_instance bpwi ON (
+                wfi.wf_instance_id = bpwi.wf_instance_id
+                )
+        WHERE
+            bpwi.bd_project_id = #{bdProjectId}
+          AND wfi.wf_code = #{wfCode}
+          AND wfi.data_state_code = 'use'
+        ORDER BY
+            wfi.last_modified_date DESC
+    </select>
+</mapper>

@@ -1,0 +1,10 @@
+spring:
+  activiti:
+    database-schema-update: true
+    #表示使用历史表，如果不配置，则工程启动后可以检查数据库，只建立了17张表，历史表没有建立
+    db-history-used: true
+    #记录历史等级 可配置的历史级别有none, activity, audit, full
+    history-level: full
+    #校验流程文件，默认校验resources下的processes文件夹里的流程文件
+    #如果设置false， 则resources/processes下面的bpmn文件不会自动部署
+    check-process-definitions: true

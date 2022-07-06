@@ -1,0 +1,30 @@
+rainman:
+  upload:
+    path: /rainman/data/rainman-is-ts-web-api/upload/
+  cmcc:
+    url: http://10.154.139.200:20925/com.tw.ei.commonservices.unitework.service.WsUniteWorkSyncService?wsdl
+#    url: http://10.154.142.222:20925/com.tw.ei.commonservices.unitework.service.WsUniteWorkSyncService?wsdl
+    enabled: true
+    app-code: xxaqglzcpt
+    jump-back-url: http://10.154.146.148/cmcc-oa
+    xjsyw-weburl: http://10.154.146.69:8080/hncmccisms
+    xjsyw-queryList: stbInterfaceController.do?queryList
+    xjsyw-queryCount: stbInterfaceController.do?queryListCount
+    xjsyw-detailView: xjsywBusinessListController.do?xjsywBusinessAllFlow
+    xa-role-code: xa
+  wf:
+    query-roles:
+      - admin
+      - xa
+    xa-role-code: xa
+    clean-time: 24
+  task-executor:
+    keep-alive-seconds: 30
+    thread-name-prefix: taskExecutor-
+  slow-task-executor:
+    keep-alive-seconds: 30
+    thread-name-prefix: slowTaskExecutor-
+
+  oauth2: #oauth2 认证服务器地址
+    server:
+      url: http://10.154.146.68:8080/api/auth/ticket

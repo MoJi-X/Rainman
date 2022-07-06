@@ -1,0 +1,14 @@
+${AnsiColor.BRIGHT_BLUE}
+ _____        ___   _   __   _       ___  ___       ___   __   _
+|  _  \      /   | | | |  \ | |     /   |/   |     /   | |  \ | |
+| |_| |     / /| | | | |   \| |    / /|   /| |    / /| | |   \| |
+|  _  /    / / | | | | | |\   |   / / |__/ | |   / / | | | |\   |
+| | \ \   / /  | | | | | | \  |  / /       | |  / /  | | | | \  |
+|_|  \_\ /_/   |_| |_| |_|  \_| /_/        |_| /_/   |_| |_|  \_|
+
+
+${AnsiColor.BRIGHT_GREEN}
+Jeecg  Boot Version: 3.0
+Spring Boot Version: ${spring-boot.version}${spring-boot.formatted-version}
+Spring Profiles Active: ${spring.profiles.active}
+${AnsiColor.BLACK}
